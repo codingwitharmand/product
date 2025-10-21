@@ -1,0 +1,26 @@
+###
+GET http://localhost:8080/api/products
+
+###
+POST http://localhost:8080/api/products
+Content-Type: application/json
+
+{
+  "name": "Remote controller",
+  "price": 15.0
+}
+
+###
+PUT http://localhost:8080/api/products/68f7b4491e3127e9e1827885
+Content-Type: application/json
+
+{
+  "name": "Remote controller",
+  "price": 25.0
+}
+
+###
+DELETE http://localhost:8080/api/products/68f7b4491e3127e9e1827885
+
+###
+GET http://localhost:8080/api/products/68f7b4491e3127e9e1827885
