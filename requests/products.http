@@ -1,26 +1,29 @@
 ###
-GET http://localhost:8080/api/products
+GET http://localhost:8080/api/products?limit=10&skip=0
 
 ###
-POST http://localhost:8080/api/products
+GET http://localhost:8080/api/products/1
+
+###
+POST http://localhost:8080/api/products/search
 Content-Type: application/json
 
 {
-  "name": "Remote controller",
-  "price": 15.0
+  "query": "phone",
+  "limit": 5
 }
 
 ###
-PUT http://localhost:8080/api/products/68f7b4491e3127e9e1827885
-Content-Type: application/json
-
-{
-  "name": "Remote controller",
-  "price": 25.0
-}
+GET http://localhost:8080/api/products/categories
 
 ###
-DELETE http://localhost:8080/api/products/68f7b4491e3127e9e1827885
+GET http://localhost:8080/api/products/category/laptops
 
 ###
-GET http://localhost:8080/api/products/68f7b4491e3127e9e1827885
+GET http://localhost:8080/api/products/trending?limit=5
+
+###
+GET http://localhost:8080/api/products/on-sale
+
+###
+GET http://localhost:8080/api/products/analytics/price-by-category
