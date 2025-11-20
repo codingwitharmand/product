@@ -1,40 +1,31 @@
 # Product Service (Reactive)
 
-A minimal reactive REST API for managing products, built with Spring Boot 3 (WebFlux) and Reactive MongoDB.
+A minimal reactive REST API built with Spring Boot 3 (WebFlux) that fetches products from the public DummyJSON API, enriches them with a computed discounted price, and exposes a small analytics endpoint.
 
 ## Features
-- Reactive CRUD endpoints under `/api/products`
 - Spring WebFlux + Project Reactor
-- Reactive MongoDB repository
-- HTTP request examples in `requests/products.http`
+- Integrates with DummyJSON products API via `WebClient`
+- Endpoint to list products with pagination: `limit` and `skip`
+- Enrichment: computes `discountedPrice` when a `discountPercentage` is present
+- Analytics: average price per category
+- Ready-to-run HTTP request examples in `requests/products.http`
 
 ## Tech Stack
 - Java 21
 - Spring Boot 3.5 (WebFlux)
-- Spring Data MongoDB Reactive
 - Maven
 
 ## Prerequisites
 - Java 21 (verify with: `java -version`)
 - Maven (wrapper included: `./mvnw`)
-- MongoDB 6.x running locally, or start it via Docker
 
-Quick MongoDB via Docker:
-
-```bash
-# Pull and run MongoDB on the default port 27017
-docker run --name product-mongo -p 27017:27017 -d mongo:latest
-```
-
-The application expects MongoDB at `mongodb://localhost:27017/productdb` (configurable).
+No database is required. The service calls `https://dummyjson.com` to retrieve data.
 
 ## Getting Started
 
 1) Clone and enter the project directory
 
-2) Start MongoDB (see Docker command above, or use a local MongoDB installation)
-
-3) Run the application
+2) Run the application
 
 ```bash
 # Using Maven Wrapper
@@ -48,68 +39,72 @@ java -jar target/product-0.0.1-SNAPSHOT.jar
 By default the app runs on `http://localhost:8080`.
 
 ## Configuration
-Configuration lives in `src/main/resources/application.yml`:
+- Application config: `src/main/resources/application.yml` (currently only the app name)
+- Web client config: `src/main/java/com/cwa/product/config/WebClientConfig.java`
+  - Base URL: `https://dummyjson.com`
+  - Timeout: 10 seconds
 
-```yaml
-spring:
-  data:
-    mongodb:
-      uri: mongodb://localhost:27017/productdb
-```
+If you need to change the base URL or timeouts, update `WebClientConfig` accordingly.
 
-You can override via environment variables:
-- `SPRING_DATA_MONGODB_URI` e.g. `export SPRING_DATA_MONGODB_URI="mongodb://localhost:27017/productdb"`
-- `SERVER_PORT` to change the HTTP port (e.g. `export SERVER_PORT=8081`)
+## Domain Models
 
-## Domain Model
+`ProductResponse` (wrapper):
 ```json
 {
-  "id": "string (generated)",
-  "name": "string",
-  "price": 0.0
+  "products": [],
+  "total": 100,
+  "skip": 0,
+  "limit": 30
 }
 ```
+
+`Product` (fields relevant to the service):
+```json
+{
+  "id": 1,
+  "title": "string",
+  "description": "string",
+  "price": 100.00,
+  "category": "string",
+  "brand": "string",
+  "rating": 4.5,
+  "stock": 10,
+  "thumbnail": "url",
+  "images": ["url", "url"],
+  "discountPercentage": 12.5,
+  "discountedPrice": 87.50
+}
+```
+
+Note: `discountedPrice` is computed by this service when `discountPercentage > 0`.
 
 ## REST API
 Base path: `/api/products`
 
-- GET `/api/products` — List all products
-- POST `/api/products` — Create a product
-- GET `/api/products/{id}` — Get a product by id
-- PUT `/api/products/{id}` — Update an existing product (name, price)
-- DELETE `/api/products/{id}` — Delete a product by id
+- GET `/api/products`
+  - Query params: `limit` (default `30`), `skip` (default `0`)
+  - Response: `ProductResponse`
+
+- GET `/api/products/analytics/price-by-category`
+  - Response: JSON object mapping `category -> averagePrice` (rounded to 2 decimals)
 
 ### Examples (curl)
-List all:
+List products (defaults):
 ```bash
-curl -s http://localhost:8080/api/products
+curl -s "http://localhost:8080/api/products"
 ```
 
-Create:
+List products with pagination:
 ```bash
-curl -s -X POST http://localhost:8080/api/products \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"Laptop","price":1499.99}'
+curl -s "http://localhost:8080/api/products?limit=20&skip=10"
 ```
 
-Get by id:
+Average price by category:
 ```bash
-curl -s http://localhost:8080/api/products/<id>
+curl -s "http://localhost:8080/api/products/analytics/price-by-category"
 ```
 
-Update:
-```bash
-curl -s -X PUT http://localhost:8080/api/products/<id> \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"Laptop Pro","price":1899.00}'
-```
-
-Delete:
-```bash
-curl -s -X DELETE http://localhost:8080/api/products/<id>
-```
-
-### HTTP file (IntelliJ/IDEA)
+### HTTP file (IntelliJ IDEA)
 You can also use the ready-made HTTP requests in:
 ```
 requests/products.http
@@ -121,9 +116,11 @@ requests/products.http
 ```
 
 ## Troubleshooting
-- MongoDB connection refused
-  - Ensure MongoDB is running and listening on `localhost:27017`
-  - If using Docker, check the container: `docker ps` and logs: `docker logs product-mongo`
+- Network issues reaching DummyJSON
+  - Ensure outbound internet access is available from your machine
+  - Base URL is `https://dummyjson.com`
+- Timeouts
+  - Default response timeout is 10s (see `WebClientConfig`)
 - Java version
   - The project targets Java 21. Ensure your `JAVA_HOME` points to JDK 21.
 - Port conflicts
@@ -134,9 +131,14 @@ requests/products.http
 src/
   main/java/com/cwa/product/
     ProductApplication.java
+    client/DummyJsonClient.java
+    config/WebClientConfig.java
     controller/ProductController.java
-    entity/Product.java
-    repository/ProductRepository.java
+    exception/ClientException.java
+    exception/ServerException.java
+    model/Product.java
+    model/ProductResponse.java
+    service/ProductService.java
   main/resources/application.yml
   test/java/com/cwa/product/ProductApplicationTests.java
 requests/products.http
